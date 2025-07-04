@@ -1,0 +1,62 @@
+[tool.poetry]
+name = "claimatic"
+version = "0.1.0"
+description = "Auto-process public claims with LLM sentiment/category analysis + n8n workflows."
+authors = ["dmvaled <dmvaled@gmail.com>"]
+readme = "README.md"
+license = "MIT"
+keywords = [
+  "claim", "ai", "auto", "process", "LLM", "analysis", "n8n", "Telegram", "Sheets", "solution"
+]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pydantic = "^2.7.1"
+
+poetry-core = ">=1.0.0"
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.11.12"
+black = "^25.1.0"
+mypy = "^1.16.0"
+pre-commit = "^4.2.0"
+
+[tool.poetry.group.test.dependencies]
+pytest-cov = "^5.0.0"
+pytest = "^8.3.5"
+pytest-asyncio = "^0.23.0"
+
+[tool.poetry.scripts]
+run-test = "pytest"
+
+[build-system]
+requires = ["poetry-core>=2.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+fix = true
+unsafe-fixes = true
+
+[tool.ruff.lint]
+extend-select = ["E", "F", "W", "I"]
+
+[tool.ruff.lint.isort]
+force-single-line = true
+combine-as-imports = false
+force-sort-within-sections = true
+lines-after-imports = 2
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+skip-string-normalization = false
+
+[tool.pytest.ini_options]
+addopts = "-ra -q"
+python_files = "test_*.py"
+python_functions = "test_*"
+testpaths = ["tests"]
+
+[tool.mypy]
+config_file = "mypy.ini"

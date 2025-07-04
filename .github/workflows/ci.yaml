@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  lint-test-coverage:
+    name: Lint, Test and Coverage
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: [ "3.12", "3.13" ]
+      fail-fast: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        id: setup-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Verify Poetry installation
+        run: |
+          echo "Poetry Version:"
+          poetry --version
+          echo "Current PATH:"
+          echo $PATH
+
+      - name: Clear Poetry Cache (if any)
+        run: poetry cache clear --all pypi
+
+      - name: Configure Poetry
+        run: poetry config virtualenvs.in-project true --local
+
+      - name: Install dependencies
+        run: poetry install --no-root --with dev --no-interaction
+
+      - name: Lint with Ruff
+        run: poetry run ruff check .
+
+      - name: Run Mypy (Type Checking)
+        run: poetry run mypy --install-types --non-interactive --strict src
+
+      - name: Run tests and collect coverage
+        run: |
+          poetry run pytest \
+            --cov=src \
+            --cov-report=xml \
+            --cov-fail-under=50
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          fail_ci_if_error: true
+          verbose: true
+          slug: ${{ github.repository }}
+        if: success()
