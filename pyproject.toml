@@ -11,9 +11,24 @@ keywords = [
 
 [tool.poetry.dependencies]
 python = "^3.12"
+python-multipart = "^0.0.20"
+dotenv = "^0.9.9"
+loguru = "^0.7.3"
 pydantic = "^2.7.1"
+uvicorn = "^0.35.0"
+fastapi = "^0.115.14"
+aiohttp = "^3.12.13"
+aiosqlite = "^0.21.0"
+transformers = "^4.52.4"
+torch = "2.2.2"
+numpy = "<2.0"
+safetensors = "^0.5.3"
+sentencepiece = "^0.2.0"
+sacremoses = "^0.1.1"
+poetry-core = ">=2.0.0,<3.0.0"
+openai = "^1.93.0"
+pydantic-settings = "^2.10.1"
 
-poetry-core = ">=1.0.0"
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.11.12"
 black = "^25.1.0"
@@ -27,10 +42,6 @@ pytest-asyncio = "^0.23.0"
 
 [tool.poetry.scripts]
 run-test = "pytest"
-
-[build-system]
-requires = ["poetry-core>=2.0.0"]
-build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
 line-length = 88
@@ -60,3 +71,7 @@ testpaths = ["tests"]
 
 [tool.mypy]
 config_file = "mypy.ini"
+
+[build-system]
+requires = ["poetry-core>=2.0.0"]
+build-backend = "poetry.core.masonry.api"
