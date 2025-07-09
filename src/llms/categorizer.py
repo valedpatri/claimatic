@@ -7,15 +7,20 @@ from pydantic import ValidationError
 from src.schemas.keywords import ACCOUNT_KEYWORDS
 from src.schemas.keywords import PAYMENT_KEYWORDS
 from src.schemas.keywords import SERVICE_KEYWORDS
+from src.schemas.schemas import ClaimCategory
 from src.schemas.schemas import OllamaResponse
 
 
-DEFAULT_KEYWORD_MAP: dict[str, set[str]] = {
-    "PAYMENT": PAYMENT_KEYWORDS,
-    "SERVICE": SERVICE_KEYWORDS,
-    "ACCOUNT": ACCOUNT_KEYWORDS,
+DEFAULT_KEYWORD_MAP: dict[ClaimCategory, set[str]] = {
+    ClaimCategory.PAYMENT: PAYMENT_KEYWORDS,
+    ClaimCategory.SERVICE: SERVICE_KEYWORDS,
+    ClaimCategory.ACCOUNT: ACCOUNT_KEYWORDS,
 }
-DEFAULT_AI_CATEGORIES = ["PAYMENT", "SERVICE", "OTHER"]
+DEFAULT_AI_CATEGORIES = [
+    ClaimCategory.PAYMENT,
+    ClaimCategory.SERVICE,
+    ClaimCategory.OTHER,
+]
 
 
 class AsyncClaimCategorizer:
@@ -26,8 +31,8 @@ class AsyncClaimCategorizer:
 
     def __init__(
         self,
-        keyword_map: dict[str, set[str]] = DEFAULT_KEYWORD_MAP,
-        ai_categories: list[str] = DEFAULT_AI_CATEGORIES,
+        keyword_map: dict[ClaimCategory, set[str]] = DEFAULT_KEYWORD_MAP,
+        ai_categories: list[ClaimCategory] = DEFAULT_AI_CATEGORIES,
         ollama_model: str = "mistral",
         ollama_host: str = "http://localhost:11434",
     ):
@@ -99,24 +104,46 @@ class AsyncClaimCategorizer:
             )
             return "AI_UNAVAILABLE"
 
-    async def categorize(self, claim_text: str) -> str:
+    async def categorize(self, claim_text: str) -> ClaimCategory:
         """
-        Performs the full async categorization process.
+        Performs the full async categorization process,
+        returning a valid ClaimCategory enum.
         """
         self.logger.info(f"--- New Async Claim: '{claim_text}' ---")
 
-        # --- Stage 1: Synchronous Keyword Detection (it's fast enough) ---
+        # --- Stage 1: Synchronous Keyword Detection ---
         claim_words = self._preprocess_text(claim_text)
         for category, keywords in self.keyword_map.items():
             if not keywords.isdisjoint(claim_words):
                 self.logger.info(
-                    f"Stage 1 Result: {category}. Final Category: {category}\n"
+                    f"Stage 1 Result: {category.value}."
+                    f" Final Category: {category.value}\n"
                 )
                 return category
 
         # --- Stage 2: Asynchronous AI Categorization ---
-        async with aiohttp.ClientSession() as session:
-            category = await self._categorize_with_ai(claim_text, session)
+        self.logger.info("Stage 1 did not find a match. Proceeding to Stage 2 (AI).")
 
-        self.logger.info(f"Final Category: {category}\n")
-        return category
+        final_category: ClaimCategory
+        try:
+            async with aiohttp.ClientSession() as session:
+                ai_category_str = await self._categorize_with_ai(claim_text, session)
+
+            try:
+                final_category = ClaimCategory(ai_category_str)
+                self.logger.info(f"Stage 2 (AI) Result: {final_category.value}")
+            except ValueError:
+                self.logger.warning(
+                    f"AI returned an unrecognized category: '{ai_category_str}'."
+                    f" Defaulting to OTHER."
+                )
+                final_category = ClaimCategory.OTHER
+
+        except Exception as e:
+            self.logger.error(
+                f"AI categorization failed: {e}. Defaulting to AI_UNAVAILABLE."
+            )
+            final_category = ClaimCategory.AI_UNAVAILABLE
+
+        self.logger.info(f"Final Category: {final_category.value}\n")
+        return final_category
