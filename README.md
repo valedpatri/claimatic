@@ -20,6 +20,18 @@ FastAPI service for analyzing, categorizing, and managing customer claims with A
   - Recent claims dashboard
   - Detailed logging
 
+## Коротко о проекте
+
+- n8n, Mistral запускаются в контейнерах
+- категоризация двухэтапная:
+
+    - сначала быстрая без запроса к API с использованием предустановленных сетов
+    - если она неудачна, то запрашиваем Mistral
+
+- проект содержит элементы production-ready (CI, config)
+- при необходимости может быть приведен к production
+
+
 ## Tech Stack
 
 | Component          | Technology                 |
@@ -41,17 +53,6 @@ FastAPI service for analyzing, categorizing, and managing customer claims with A
 
    uvicorn main:app --reload
     ```
-
-graph TD
-    A[Client] --> B[POST /add-claim]
-    B --> C{Translation?}
-    C -->|RU| D[LLMTranslator]
-    C -->|EN| E[Sentiment Analysis]
-    D --> E
-    E --> F[Category Detection]
-    F --> G[Database Storage]
-    G --> H[ClaimRank Response]
-
 
 [<img src="docs/images/img_01.png" width="1000"/>]()
 
