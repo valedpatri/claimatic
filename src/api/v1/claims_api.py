@@ -1,7 +1,6 @@
 from collections import defaultdict
 from http import HTTPStatus
 import re
-from typing import cast
 
 from aiohttp import ClientSession
 import aiosqlite
@@ -20,9 +19,7 @@ from src.db.database import close_claim_by_id
 from src.db.database import get_last_hour_claims
 from src.llms.categorizer import AsyncClaimCategorizer
 from src.schemas.schemas import Claim
-from src.schemas.schemas import ClaimCategory
 from src.schemas.schemas import ClaimRank
-from src.schemas.schemas import SentimentType
 
 
 claims_router = APIRouter()
@@ -87,8 +84,8 @@ async def rank_claim(
     return ClaimRank(
         id=new_id,
         status="open",
-        sentiment=cast(SentimentType, sentiment),
-        category=cast(ClaimCategory, category),
+        sentiment=sentiment,
+        category=category,
         warning=warning_message,
     )
 
@@ -102,7 +99,7 @@ async def get_open_claims_last_hour(
     grouped: defaultdict[str, list[Claim]] = defaultdict(list)
     for row in rows:
         claim_obj = Claim.model_validate(row)
-        grouped[str(claim_obj.category)].append(claim_obj)
+        grouped[str(claim_obj.category.value)].append(claim_obj)
 
     return dict(grouped)
 
