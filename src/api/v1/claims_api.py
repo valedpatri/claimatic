@@ -13,12 +13,12 @@ from loguru import logger
 
 from src.api.dependencies import get_aiohttp_session
 from src.api.dependencies import get_db_connection
-from src.core.config import settings
+from src.api.v1.utils.sentiment import analyze_sentiment
+from src.api.v1.utils.translate import handle_translation
 from src.db.database import add_claim_to_db
 from src.db.database import close_claim_by_id
 from src.db.database import get_last_hour_claims
 from src.llms.categorizer import AsyncClaimCategorizer
-from src.llms.translator import LLMTranslator
 from src.schemas.schemas import Claim
 from src.schemas.schemas import ClaimCategory
 from src.schemas.schemas import ClaimRank
@@ -26,11 +26,6 @@ from src.schemas.schemas import SentimentType
 
 
 claims_router = APIRouter()
-
-API_LAYER_SENTIMENT_URL = settings.API_LAYER_SENTIMENT_URL
-API_LAYER_KEY = settings.API_LAYER_KEY
-CLAIM_LANGUAGE = settings.CLAIM_LANGUAGE
-BASE_LANGUAGE = settings.BASE_LANGUAGE
 
 categorizer = AsyncClaimCategorizer()
 
@@ -96,62 +91,6 @@ async def rank_claim(
         category=cast(ClaimCategory, category),
         warning=warning_message,
     )
-
-
-async def handle_translation(claim: str) -> str | None:
-    """Handle claim translation if needed"""
-    translator = LLMTranslator()
-    logger.info(f"Translating query from {CLAIM_LANGUAGE} to '{BASE_LANGUAGE}'.")
-
-    try:
-        translated_claim = translator.translate(
-            query_text=claim,
-            source_lang=CLAIM_LANGUAGE,
-            target_lang=BASE_LANGUAGE,
-        )
-
-        if not translated_claim:
-            logger.warning(
-                f"Translation from {CLAIM_LANGUAGE} failed. "
-                f"Proceeding with original query."
-            )
-            return None
-
-        if translated_claim == claim:
-            logger.info("Translator returned original query.")
-
-        return translated_claim
-
-    except Exception as e:
-        logger.error(f"Translation error: {e}")
-        return None
-
-
-async def analyze_sentiment(
-    claim: str, session: ClientSession
-) -> tuple[str, str | None]:
-    """Analyze sentiment using API Layer"""
-    headers = {"apikey": API_LAYER_KEY}
-    payload = claim.encode("utf-8")
-    sentiment = "Unknown"
-    warning_message = None
-
-    try:
-        async with session.post(
-            url=API_LAYER_SENTIMENT_URL, headers=headers, data=payload
-        ) as resp:
-            resp.raise_for_status()
-            sentiment_data = await resp.json()
-            sentiment = sentiment_data.get("sentiment", "Neutral").capitalize()
-            logger.info(f"API sentiment analysis result: {sentiment}")
-
-    except Exception as e:
-        logger.warning(
-            f"Sentiment analysis failed, defaulting to 'Unknown'. Error: {e}"
-        )
-        warning_message = "Sentiment analysis failed; value defaulted to 'Unknown'."
-
-    return sentiment, warning_message
 
 
 @claims_router.get("/open-last-hour")
