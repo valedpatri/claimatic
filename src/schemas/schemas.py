@@ -1,19 +1,42 @@
+from __future__ import annotations
+
+from datetime import datetime
+from enum import Enum
 from sqlite3 import Row
 from typing import Any
 from typing import Literal
-from typing import Self
 
 from pydantic import BaseModel
 from pydantic import model_validator
 
 
-SentimentType = Literal["Positive", "Negative", "Neutral", "Unknown"]
-ClaimCategory = Literal["SERVICE", "PAYMENT", "ACCOUNT", "OTHER", "AI_UNAVAILABLE"]
-SENTIMENT_PRIORITY = {
-    "Negative": 0,
-    "Neutral": 1,
-    "Positive": 2,
-}
+class Sentiment(str, Enum):
+    """Enumeration for sentiment types with built-in priority logic."""
+
+    NEGATIVE = "Negative"
+    NEUTRAL = "Neutral"
+    POSITIVE = "Positive"
+    UNKNOWN = "Unknown"
+
+    @property
+    def priority(self) -> int | None:
+        """Returns the priority for sorting, or None if not applicable."""
+        priority_map = {
+            "Negative": 0,
+            "Neutral": 1,
+            "Positive": 2,
+        }
+        return priority_map.get(self.value)
+
+
+class ClaimCategory(str, Enum):
+    """Enumeration for claim categories."""
+
+    SERVICE = "SERVICE"
+    PAYMENT = "PAYMENT"
+    ACCOUNT = "ACCOUNT"
+    OTHER = "OTHER"
+    AI_UNAVAILABLE = "AI_UNAVAILABLE"
 
 
 class HealthCheckResponse(BaseModel):
@@ -21,7 +44,8 @@ class HealthCheckResponse(BaseModel):
 
 
 class OllamaMessage(BaseModel):
-    role: str
+    # You could even use a Literal here if roles are fixed
+    role: Literal["user", "assistant", "system"] | str
     content: str
 
 
@@ -30,31 +54,32 @@ class OllamaResponse(BaseModel):
     message: OllamaMessage | None = None
 
 
-class Claim(BaseModel):
+class BaseClaim(BaseModel):
+    """A base model containing fields common to all claim representations."""
+
     id: int
-    timestamp: str
+    sentiment: Sentiment
+
+
+class Claim(BaseClaim):
+    """Represents a raw claim, typically from the database."""
+
+    timestamp: datetime
     text: str
-    sentiment: str
-    category: ClaimCategory | None
+    category: ClaimCategory
 
     @model_validator(mode="before")
     @classmethod
-    def validate_from_row(cls: type[Self], data: Any) -> Any:
-        """
-        Convert a `sqlite3.Row` to a `dict` before standard validation.
-        """
+    def validate_from_row(cls: type[Claim], data: Any) -> Any:
+        """Convert a `sqlite3.Row` to a `dict` before standard validation."""
         if isinstance(data, Row):
             return dict(data)
         return data
 
 
-class ClaimRank(BaseModel):
-    """
-    Represents a claim with validated status, sentiment, and category.
-    """
+class ClaimRank(BaseClaim):
+    """Represents a processed claim ready for ranking or action."""
 
-    id: int
-    status: Literal["open", "closed"] = "open"
-    sentiment: str
+    status: Literal["open", "closed", "pending"] = "open"
     category: ClaimCategory
-    warning: str | None
+    warning: str | None = None
