@@ -27,7 +27,7 @@ class OllamaMessage(BaseModel):
 
 class OllamaResponse(BaseModel):
     model: str
-    message: OllamaMessage
+    message: OllamaMessage | None = None
 
 
 class Claim(BaseModel):
