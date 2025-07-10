@@ -1,4 +1,6 @@
 import re
+from typing import Mapping
+from typing import Sequence
 
 import aiohttp
 from loguru import logger
@@ -31,11 +33,16 @@ class AsyncClaimCategorizer:
 
     def __init__(
         self,
-        keyword_map: dict[ClaimCategory, set[str]] = DEFAULT_KEYWORD_MAP,
-        ai_categories: list[ClaimCategory] = DEFAULT_AI_CATEGORIES,
+        keyword_map: Mapping[ClaimCategory, set[str]] | None = None,
+        ai_categories: Sequence[ClaimCategory] | None = None,
         ollama_model: str = "mistral",
         ollama_host: str = "http://localhost:11434",
     ):
+        if keyword_map is None:
+            keyword_map = DEFAULT_KEYWORD_MAP
+        if ai_categories is None:
+            ai_categories = DEFAULT_AI_CATEGORIES
+
         self.logger = logger
         self.keyword_map = keyword_map
         self.ai_categories = ai_categories
